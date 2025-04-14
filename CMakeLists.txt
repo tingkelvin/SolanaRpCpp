@@ -1,41 +1,60 @@
-# Top-level CMakeLists.txt
-
 cmake_minimum_required(VERSION 3.24)
-
-project(SolanaRpCpp LANGUAGES CXX)
+project(SolanaLib LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
-# FetchContent_MakeAvailable(json)
+# Include header files for the Solana library
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/SolanaLib/include)
 
-# find_package(OpenSSL REQUIRED)
+# Gather sources and headers for the SolanaLib
+file(GLOB_RECURSE LIB_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/SolanaLib/src/*.cpp)
+
+file(GLOB_RECURSE LIB_HEADERS CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/SolanaLib/include/*.hpp)
+
+# Build the static library (SolanaLib)
+add_library(SolanaLib STATIC ${LIB_SOURCES} ${LIB_HEADERS})
+
+# Specify public include directories for consumers of SolanaLib
+target_include_directories(SolanaLib PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/SolanaLib/include
+)
+
+# Find Boost and specify components required
+find_package(Boost REQUIRED COMPONENTS
+    url
+    system
+    thread
+    headers
+    coroutine
+)
+
+# Link Boost libraries to the main project (app)
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    Boost::url
+    Boost::system
+    Boost::thread
+    Boost::coroutine
+)
+
+# Ensure Boost includes are available to the SolanaLib
+target_include_directories(SolanaLib PUBLIC
+    ${Boost_INCLUDE_DIRS}
+)
+
+find_package(OpenSSL REQUIRED)
+
+target_link_libraries(SolanaLib PRIVATE OpenSSL::Crypto)
 
 
-add_library(Borsh INTERFACE)
-target_include_directories(Borsh INTERFACE ${borsh_cpp_SOURCE_DIR}/borsh-cpp/src)
+# Build the main executable (app)
+add_executable(app main.cpp)
 
+# Link SolanaLib to the app executable
+target_link_libraries(app PRIVATE SolanaLib)
 
-set(LIBRARY_NAME solana_rpcpp)
-
-if (UNIX)
-    add_compile_options("-fexceptions")
-endif(UNIX)
-
-# add_subdirectory(Rpc)
-# add_subdirectory(Core)
-
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
-    add_executable(app main.cpp)
-    # target_link_libraries(app PRIVATE Solana.Rpc Solana.Core.Programs Solana.Core.Network)
-    add_custom_command(TARGET app POST_BUILD
-        COMMAND app
-        COMMENT "Running app after build"
-    )
-endif()
-
-# set(BUILD_TEST ON CACHE BOOL "Whether to build tests")
-# if (BUILD_TEST)
-#     enable_testing()
-#     add_subdirectory(test)
-# endif()
+# Enable testing for the project
+enable_testing()
+add_subdirectory(SolanaLib/tests)
