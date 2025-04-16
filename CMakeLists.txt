@@ -45,9 +45,10 @@ target_include_directories(SolanaLib PUBLIC
 )
 
 find_package(OpenSSL REQUIRED)
+find_package(nlohmann_json REQUIRED)
 
-target_link_libraries(SolanaLib PRIVATE OpenSSL::Crypto)
-
+target_link_libraries(SolanaLib PRIVATE OpenSSL::Crypto OpenSSL::SSL)
+target_link_libraries(SolanaLib PRIVATE nlohmann_json)
 
 # Build the main executable (app)
 add_executable(app main.cpp)

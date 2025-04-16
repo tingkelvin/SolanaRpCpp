@@ -1,5 +1,5 @@
 
-#include "include/Solana/Core/Network/HttpClient.hpp"
+#include "Solana/Network/HttpClient.hpp"
 #include <iostream>
 #include <memory>
 

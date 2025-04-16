@@ -11,8 +11,13 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 include(GoogleTest)
 
-foreach(X IN ITEMS EncodingTests CryptoTests)
+foreach(X IN ITEMS EncodingTests CryptoTests NetworkTests)
     add_executable(${X} ${X}.cpp)
-    target_link_libraries(${X} GTest::gtest_main SolanaLib)
+    target_link_libraries(${X} 
+        GTest::gtest_main 
+        SolanaLib
+        OpenSSL::SSL
+        OpenSSL::Crypto
+    )
     gtest_discover_tests(${X})
 endforeach()
