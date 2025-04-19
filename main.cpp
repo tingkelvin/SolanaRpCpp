@@ -13,22 +13,39 @@ int main()
     net::io_context ioc;
     ssl::context ctx{ssl::context::tlsv12_client};
     // Create WebSocket object
-    Solana::Network::WebSocket ws(ioc, ctx, "api.mainnet-beta.solana.com", "443", "");
+    Solana::Network::WebSocket ws(ioc, ctx, "mainnet.helius-rpc.com", "443", "");
     // Send the subscription message
     const std::string subscription_message = R"({
   "jsonrpc": "2.0",
   "id": 1,
-  "method": "programSubscribe",
+  "method": "logsSubscribe",
   "params": [
-    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA", 
     {
-      "encoding": "jsonParsed"
+      "mentions": ["TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM"]
+    },
+    {
+      "commitment": "finalized"
     }
   ]
 })";
     // Retry mechanism
-    int retry_count = 0;
-    const int max_retries = 5;
-    ws.start(subscription_message, max_retries);
+    ws.start(subscription_message, [](beast::flat_buffer &&buf)
+             {
+                 // Convert buffer to string
+                 std::string message = beast::buffers_to_string(buf.data());
+                 std::cout << "Received: " << message << "\n";
+
+                 //  // Try parsing it as a JSON value
+                 //  json::value parsed = json::parse(message);
+
+                 //  // Write to file directly (without wrapping)
+                 //  file << json::serialize(parsed) << "\n";
+                 //  if (file.fail())
+                 //  {
+                 //      fail(beast::error_code(errno, beast::system_category()), "file write");
+                 //      break;
+                 //  }
+                 //  file.flush();
+             });
     return 0;
 }

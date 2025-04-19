@@ -34,10 +34,10 @@ namespace Solana::Network
         ~WebSocket();
 
         // Starts the reconnecting session loop
-        void start(const std::string &subscription_message, int max_retries = 10);
+        void start(const std::string &subscription_message, std::function<void(beast::flat_buffer &&)> on_msg_callback, int max_retries = 10);
 
     private:
-        void subscribe(net::yield_context yield, const std::string subscription_message);
+        void subscribe(net::yield_context yield, const std::string subscription_message, std::function<void(beast::flat_buffer &&)> on_msg_callback);
         void fail(boost::beast::error_code ec, const char *what);
 
     private:

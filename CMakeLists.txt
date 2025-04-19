@@ -29,6 +29,7 @@ find_package(Boost REQUIRED COMPONENTS
     thread
     headers
     coroutine
+    json
 )
 
 # Link Boost libraries to the main project (app)
@@ -37,6 +38,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Boost::system
     Boost::thread
     Boost::coroutine
+    Boost::json
 )
 
 # Ensure Boost includes are available to the SolanaLib
@@ -59,3 +61,5 @@ target_link_libraries(app PRIVATE SolanaLib)
 # Enable testing for the project
 enable_testing()
 add_subdirectory(SolanaLib/tests)
+
+

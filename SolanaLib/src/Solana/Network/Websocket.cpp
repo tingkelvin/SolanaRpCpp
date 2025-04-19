@@ -5,9 +5,11 @@
 #include <boost/beast/websocket/ssl.hpp>
 #include <boost/asio/spawn.hpp>
 #include <boost/asio/steady_timer.hpp>
+#include <boost/json.hpp>
 // #include <cstdlib>
 // #include <functional>
 #include <iostream>
+#include <fstream>
 // #include <memory>
 // #include <string>
 // #include <thread>
@@ -17,6 +19,7 @@ namespace http = beast::http;
 namespace websocket = beast::websocket;
 namespace net = boost::asio;
 namespace ssl = boost::asio::ssl;
+namespace json = boost::json;
 using tcp = boost::asio::ip::tcp;
 
 namespace Solana::Network
@@ -44,7 +47,7 @@ namespace Solana::Network
         std::cerr << what << ": " << ec.message() << "\n";
     }
 
-    void WebSocket::subscribe(net::yield_context yield, const std::string subscription_message)
+    void WebSocket::subscribe(net::yield_context yield, const std::string subscription_message, std::function<void(beast::flat_buffer &&)> on_msg_callback)
     {
         std::cout << "Connecting to WebSocket...\n";
         beast::error_code ec;
@@ -124,6 +127,7 @@ namespace Solana::Network
             return fail(ec, "subscription_write");
 
         // Read and handle messages in a loop
+
         beast::flat_buffer buffer;
         for (;;)
         {
@@ -140,10 +144,10 @@ namespace Solana::Network
                 break;
             }
 
-            // Display the message
-            std::cout << "Received: " << beast::make_printable(buffer.data()) << "\n";
+            // Not sture if move is working prop
+            on_msg_callback(std::move(buffer));
 
-            // Clear the buffer for the next message
+            // Clear buffer
             buffer.consume(buffer.size());
         }
 
@@ -153,7 +157,7 @@ namespace Solana::Network
             return fail(ec, "close");
     }
 
-    void WebSocket::start(const std::string &subscription_message, int max_retries)
+    void WebSocket::start(const std::string &subscription_message, std::function<void(beast::flat_buffer &&)> on_msg_callback, int max_retries)
     {
         int retry_count = 0;
         while (retry_count < max_retries)
@@ -162,7 +166,7 @@ namespace Solana::Network
             {
                 // Launch the session operation with reconnect logic
                 net::spawn(ioc, [&](net::yield_context yield)
-                           { this->subscribe(yield, subscription_message); }, [](std::exception_ptr ex)
+                           { this->subscribe(yield, subscription_message, on_msg_callback); }, [](std::exception_ptr ex)
                            {
                     if(ex)
                     {
