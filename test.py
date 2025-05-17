@@ -1,36 +1,31 @@
-# wss_echo_server.py
-import asyncio
-import websockets
-import ssl
+import json
 
-# Create an SSL context and load your certificate and private key
-ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-ssl_context.load_cert_chain(certfile="cert.pem", keyfile="key.pem")
+def load_multiple_json_objects_from_lines(json_lines):
+    """
+    Parses each line (which is a stringified JSON object) into a real JSON object.
+    """
+    messages = []
+    for line in json_lines.splitlines():
+        line = line.strip()
+        if line:  # skip empty lines
+            try:
+                obj = json.loads(line)
+                messages.append(obj)
+            except json.JSONDecodeError as e:
+                print(f"⚠️ Skipping invalid JSON line: {line}\nError: {e}")
+    return messages
 
-# WebSocket handler that sends messages periodically and echoes received ones
-async def echo(websocket):
-    async def sender():
-        count = 1
-        while True:
-            message = f"Server push message {count}"
-            await websocket.send(message)
-            print(f"Sent: {message}")
-            count += 1
-            await asyncio.sleep(5)  # Send every 5 seconds
+def parse_and_write_json(input_file, output_file):
+    with open(input_file, 'r') as infile:
+        raw_data = infile.read()
 
-    async def receiver():
-        async for message in websocket:
-            print(f"Received: {message}")
-            await websocket.send(f"Echo: {message}")
+    json_objects = load_multiple_json_objects_from_lines(raw_data)
 
-    # Run sender and receiver concurrently
-    await asyncio.gather(sender(), receiver())
+    with open(output_file, 'w') as outfile:
+        json.dump(json_objects, outfile, indent=2)
 
-# Main function to start the server
-async def main():
-    async with websockets.serve(echo, "localhost", 8766, ssl=ssl_context):
-        print("Secure WebSocket server started at wss://localhost:8766")
-        await asyncio.Future()  # Run forever
+    print(f"✅ Parsed {len(json_objects)} JSON objects and wrote to '{output_file}'.")
 
-# Run the server
-asyncio.run(main())
+# Usage
+if __name__ == "__main__":
+    parse_and_write_json("messages.json", "parsed_logs.json")

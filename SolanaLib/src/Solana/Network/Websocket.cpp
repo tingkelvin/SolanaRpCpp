@@ -1,4 +1,5 @@
-#include "Solana/Network/Websocket.hpp"
+#include "Solana/Network/WebSocket.hpp"
+
 #include <boost/beast/core.hpp>
 #include <boost/beast/ssl.hpp>
 #include <boost/beast/websocket.hpp>
@@ -6,29 +7,28 @@
 #include <boost/asio/spawn.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/json.hpp>
-// #include <cstdlib>
-// #include <functional>
+
 #include <iostream>
 #include <fstream>
-// #include <memory>
-// #include <string>
-// #include <thread>
-
-namespace beast = boost::beast;
-namespace http = beast::http;
-namespace websocket = beast::websocket;
-namespace net = boost::asio;
-namespace ssl = boost::asio::ssl;
-namespace json = boost::json;
-using tcp = boost::asio::ip::tcp;
+#include <memory>
 
 namespace Solana::Network
 {
+    // Key fix: create a proper factory method to ensure shared_ptr initialization
+    std::shared_ptr<WebSocket> WebSocket::create(net::io_context &ioc, ssl::context &ctx,
+                                                 const std::string &host, const std::string &port,
+                                                 const std::string &api_key)
+    {
+        return std::shared_ptr<WebSocket>(new WebSocket(ioc, ctx, host, port, api_key));
+    }
 
-    WebSocket::WebSocket(net::io_context &ioc, ssl::context &ctx, const std::string &host, const std::string &port, const std::string &api_key)
+    WebSocket::WebSocket(net::io_context &ioc, ssl::context &ctx, const std::string &host,
+                         const std::string &port, const std::string &api_key)
         : ioc(ioc), ctx(ctx), host(host), port(port), api_key(api_key),
-          ws(std::make_unique<websocket::stream<beast::ssl_stream<beast::tcp_stream>>>(ioc, ctx)),
-          timer_(ioc)
+          ws(std::make_shared<websocket::stream<beast::ssl_stream<beast::tcp_stream>>>(ioc, ctx)),
+          timer_(ioc),
+          buffer(),
+          cancelled(false)
     {
         std::cout << "WebSocket initialized with host: " << host << ", port: " << port << "\n";
     }
@@ -47,16 +47,14 @@ namespace Solana::Network
         std::cerr << what << ": " << ec.message() << "\n";
     }
 
-    void WebSocket::subscribe(net::yield_context yield, const std::string subscription_message, std::function<void(beast::flat_buffer &&)> on_msg_callback)
+    void WebSocket::subscribe(net::yield_context yield, const std::vector<std::string> subscription_messages,
+                              std::function<void(beast::flat_buffer &&)> on_msg_callback)
     {
         std::cout << "Connecting to WebSocket...\n";
         beast::error_code ec;
 
         // These objects perform our I/O
         tcp::resolver resolver(ioc);
-
-        // Timer for pings
-        net::steady_timer timer(ioc);
 
         // Look up the domain name
         auto const results = resolver.async_resolve(host, port, yield[ec]);
@@ -65,7 +63,9 @@ namespace Solana::Network
 
         // Set a timeout on the operation
         beast::get_lowest_layer(*ws).expires_after(std::chrono::seconds(30));
+
         std::cout << "Connecting to " << host << ":" << port << "\n";
+
         // Make the connection on the IP address we get from a lookup
         auto ep = beast::get_lowest_layer(*ws).async_connect(results, yield[ec]);
         if (ec)
@@ -87,7 +87,9 @@ namespace Solana::Network
 
         // Set a timeout on the operation
         beast::get_lowest_layer(*ws).expires_after(std::chrono::seconds(30));
+
         std::cout << "Connecting to " << host_header << "\n";
+
         // Set a decorator to change the User-Agent of the handshake
         ws->set_option(websocket::stream_base::decorator(
             [](websocket::request_type &req)
@@ -118,46 +120,100 @@ namespace Solana::Network
         if (ec)
             return fail(ec, "handshake");
 
-        std::cout << "WebSocket is open\n";
-
-        // Send the subscription message
-        std::cout << "Sending subscription request\n";
-        ws->async_write(net::buffer(subscription_message), yield[ec]);
-        if (ec)
-            return fail(ec, "subscription_write");
-
-        // Read and handle messages in a loop
-
-        beast::flat_buffer buffer;
-        for (;;)
+        // Send the subscription message if provided
+        if (!subscription_messages.empty())
         {
-            // Read a message
-            ws->async_read(buffer, yield[ec]);
-
-            // Handle error or closed connection
-            if (ec)
+            for (auto message : subscription_messages)
             {
-                if (ec == websocket::error::closed)
-                    std::cout << "WebSocket is closed\n";
-                else
-                    fail(ec, "read");
-                break;
+                std::cout << "Sending subscription request: " << message << "\n";
+                ws->async_write(net::buffer(message), yield[ec]);
+                if (ec)
+                    return fail(ec, "subscription_write");
             }
-
-            // Not sture if move is working prop
-            on_msg_callback(std::move(buffer));
-
-            // Clear buffer
-            buffer.consume(buffer.size());
         }
 
-        // Gracefully close the WebSocket connection
-        ws->async_close(websocket::close_code::normal, yield[ec]);
-        if (ec)
-            return fail(ec, "close");
+        // Start the reading loop
+        doRead();
     }
 
-    void WebSocket::start(const std::string &subscription_message, std::function<void(beast::flat_buffer &&)> on_msg_callback, int max_retries)
+    void WebSocket::doRead()
+    {
+        // Make sure we're not destroyed during this operation
+        auto self = shared_from_this();
+
+        ws->async_read(
+            buffer,
+            [self](beast::error_code ec, std::size_t bytes_transferred)
+            {
+                self->onRead(ec, bytes_transferred);
+            });
+    }
+
+    void WebSocket::onRead(beast::error_code ec, std::size_t bytes_transferred)
+    {
+        if (ec)
+        {
+            if (ec == websocket::error::closed)
+                std::cout << "WebSocket connection closed normally\n";
+            else
+                fail(ec, "read");
+            return;
+        }
+
+        if (!ws->is_open())
+            return;
+
+        // Use boost::json namespace for parsing
+        using json = boost::json::value;
+
+        json message;
+        try
+        {
+            auto data = static_cast<const char *>(buffer.data().data());
+            size_t size = buffer.size();
+
+            message = boost::json::parse(std::string(data, size));
+        }
+        catch (const std::exception &e)
+        {
+            std::cout << "Failed to parse message: " << e.what() << "\n";
+        }
+
+        if (message.is_object())
+        {
+            std::cout << "Received: " << message << "\n";
+
+            // Handle message based on its content
+            // Add your message handling logic here
+        }
+
+        // Clear the buffer for the next message
+        buffer.consume(buffer.size());
+
+        // If we're not cancelled, continue reading
+        if (!cancelled)
+        {
+            doRead();
+        }
+    }
+
+    void WebSocket::doWrite(const std::string &message)
+    {
+        // Make sure we're not destroyed during this operation
+        auto self = shared_from_this();
+
+        ws->async_write(
+            net::buffer(message),
+            [self](beast::error_code ec, std::size_t bytes_transferred)
+            {
+                if (ec)
+                    self->fail(ec, "write");
+            });
+    }
+
+    void WebSocket::start(const std::vector<std::string> &subscription_messages,
+                          std::function<void(beast::flat_buffer &&)> on_msg_callback,
+                          int max_retries)
     {
         int retry_count = 0;
         while (retry_count < max_retries)
@@ -165,20 +221,20 @@ namespace Solana::Network
             try
             {
                 // Launch the session operation with reconnect logic
-                net::spawn(ioc, [&](net::yield_context yield)
-                           { this->subscribe(yield, subscription_message, on_msg_callback); }, [](std::exception_ptr ex)
+                net::spawn(ioc, [self = shared_from_this(), subscription_messages, on_msg_callback](net::yield_context yield)
+                           { self->subscribe(yield, subscription_messages, on_msg_callback); }, [](std::exception_ptr ex)
                            {
-                    if(ex)
-                    {
-                        try
+                        if(ex)
                         {
-                            std::rethrow_exception(ex);
-                        }
-                        catch(std::exception& e)
-                        {
-                            std::cerr << "Unhandled exception: " << e.what() << "\n";
-                        }
-                    } });
+                            try
+                            {
+                                std::rethrow_exception(ex);
+                            }
+                            catch(std::exception& e)
+                            {
+                                std::cerr << "Unhandled exception: " << e.what() << "\n";
+                            }
+                        } });
 
                 // Run the I/O service. The call will return when
                 // the socket is closed.
@@ -189,11 +245,9 @@ namespace Solana::Network
             {
                 std::cerr << "Connection failed: " << e.what() << "\n";
                 ++retry_count;
-
                 if (retry_count < max_retries)
                 {
                     std::cerr << "Retrying in 3 seconds... (Attempt " << retry_count << " of " << max_retries << ")\n";
-                    std::this_thread::sleep_for(std::chrono::seconds(3));
                     ioc.restart();
                 }
                 else

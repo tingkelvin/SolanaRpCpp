@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include "Solana/Network/HttpClient.hpp"
-#include "Solana/Network/Websocket.hpp"
+#include "Solana/Network/WebSocket.hpp"
 
 using namespace Solana::Network;
 using json = nlohmann::json;

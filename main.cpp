@@ -1,51 +1,89 @@
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
 #include <boost/asio/spawn.hpp>
-#include "Solana/Network/Websocket.hpp"
-
+#include <boost/json.hpp>
+#include "Solana/Network/WebSocket.hpp"
 #include <thread>
 #include <chrono>
 #include <iostream>
+#include <fstream>
+
+namespace net = boost::asio;
+namespace ssl = boost::asio::ssl;
+namespace beast = boost::beast;
+namespace json = boost::json;
 
 int main()
 {
-    // Initialize Boost.Asio IO context and SSL context
-    net::io_context ioc;
-    ssl::context ctx{ssl::context::tlsv12_client};
-    // Create WebSocket object
-    Solana::Network::WebSocket ws(ioc, ctx, "mainnet.helius-rpc.com", "443", "");
-    // Send the subscription message
-    const std::string subscription_message = R"({
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "logsSubscribe",
-  "params": [
+  // Initialize Boost.Asio IO context and SSL context
+  net::io_context ioc;
+  ssl::context ctx{ssl::context::tlsv12_client};
+
+  // Load default certificates
+  ctx.set_default_verify_paths();
+  ctx.set_verify_mode(ssl::verify_peer);
+
+  // Create WebSocket object using the factory method
+  auto ws = Solana::Network::WebSocket::create(
+      ioc, ctx)
+
+      // Define the subscription message
+      const std::vector<std::string>
+          subscription_messages = {R"({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "accountSubscribe",
+        "params": [
+            "2Rf9qzW9rhCnJmEbErrHDDZfeEXtemYdLkyJ1TE12pa7",
+            {
+                "encoding": "jsonParsed",
+                "commitment": "confirmed"
+            }
+        ]
+    })",
+                                   R"({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "accountSubscribe",
+        "params": [
+            "2Rf9qzW9rhCnJmEbErrHDDZfeEXtemYdLkyJ1TE12pa7",
+            {
+                "encoding": "jsonParsed",
+                "commitment": "confirmed"
+            }
+        ]
+    })"};
+
+  // Open file for logging messages
+  std::ofstream file("messages.json", std::ios::app); // Open in append mode
+
+  // Define the callback function for handling received messages
+  auto message_handler = [&file](beast::flat_buffer &&buf)
+  {
+    std::string message = beast::buffers_to_string(buf.data());
+    try
     {
-      "mentions": ["TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM"]
-    },
-    {
-      "commitment": "finalized"
+      auto parsed = json::parse(message);
+      std::cout << "Parsed JSON:\n";
+      std::cout << parsed << std::endl;
+      file << message << "\n";
+      file.flush();
+      std::cout << "----------------------------------------\n";
     }
-  ]
-})";
-    // Retry mechanism
-    ws.start(subscription_message, [](beast::flat_buffer &&buf)
-             {
-                 // Convert buffer to string
-                 std::string message = beast::buffers_to_string(buf.data());
-                 std::cout << "Received: " << message << "\n";
+    catch (const std::exception &e)
+    {
+      std::cerr << "Failed to parse/write message: " << e.what() << "\n";
+    }
+  };
 
-                 //  // Try parsing it as a JSON value
-                 //  json::value parsed = json::parse(message);
+  // Start the WebSocket connection with the subscription message
+  ws->start(subscription_messages, message_handler);
 
-                 //  // Write to file directly (without wrapping)
-                 //  file << json::serialize(parsed) << "\n";
-                 //  if (file.fail())
-                 //  {
-                 //      fail(beast::error_code(errno, beast::system_category()), "file write");
-                 //      break;
-                 //  }
-                 //  file.flush();
-             });
-    return 0;
+  // The ioc.run() call is inside start() so we don't need to call it here
+
+  // To keep the program running (if needed)
+  std::cout << "Press Enter to exit..." << std::endl;
+  std::cin.get();
+
+  return 0;
 }

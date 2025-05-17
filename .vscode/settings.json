@@ -62,7 +62,11 @@
     "future": "cpp",
     "thread": "cpp",
     "condition_variable": "cpp",
-    "fstream": "cpp"
+    "fstream": "cpp",
+    "__tree": "cpp",
+    "regex": "cpp",
+    "stack": "cpp",
+    "iomanip": "cpp"
   },
   "C_Cpp.errorSquiggles": "disabled"
 }
