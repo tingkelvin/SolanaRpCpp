@@ -11,7 +11,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 include(GoogleTest)
 
-foreach(X IN ITEMS EncodingTests CryptoTests NetworkTests)
+foreach(X IN ITEMS EncodingTests CryptoTests NetworkTests RpcMethodsTests)
     add_executable(${X} ${X}.cpp)
     target_link_libraries(${X} 
         GTest::gtest_main 

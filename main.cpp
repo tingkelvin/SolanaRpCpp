@@ -13,38 +13,26 @@ int main()
 
   // Raw JSON parsing
   Solana::GetAccountInfo<> request("vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg");
+  // Set encoding explicitly to base58
+  // request.config.encoding = Solana::AccountEncoding(Solana::EncodingType::Base64);
+
   auto future = rpc.send(request);
 
-  // try
-  // {
-  //   auto reply = future.get(); // reply is Solana::RpcReply<Solana::GetAccountInfo<>>
+  try
+  {
+    auto reply = future.get();
 
-  //   if (reply.result.has_value())
-  //   {
-  //     std::cout << "Status: Success\n";
-  //     const auto &accountInfoReply = reply.result.value();
-  //     std::cout << "Owner: " << accountInfoReply.owner.toBase58() << "\n";
-  //     std::cout << "Space: " << accountInfoReply.space << "\n";
-  //     std::cout << "Account Data: " << accountInfoReply.accountData.dump(2) << "\n";
-  //   }
-  //   else if (reply.error.has_value())
-  //   {
-  //     std::cout << "Status: Error\n";
-  //     std::cerr << "RPC Error Code: " << reply.error.value().code << "\n";
-  //     std::cerr << "RPC Error Message: " << reply.error.value().message << "\n";
-  //     // You can also access reply.error.value().data if it exists
-  //   }
-  //   else
-  //   {
-  //     std::cout << "Status: Unknown\n";
-  //     std::cerr << "No result or error in the reply.\n";
-  //   }
-  // }
-  // catch (const std::exception &ex)
-  // {
-  //   std::cout << "Status: Exception\n";
-  //   std::cerr << "Exception: " << ex.what() << "\n";
-  // }
+    std::cout << "Executable: " << (reply.result.executable ? "true" : "false") << "\n";
+    std::cout << "Lamports: " << reply.result.lamports << "\n";
+    std::cout << "Owner: " << reply.result.owner.toStdString() << "\n"; // <-- Use toBase58()
+    std::cout << "Rent Epoch: " << reply.result.rentEpoch << "\n";
+    std::cout << "Space: " << reply.result.space << "\n";
+    std::cout << "Account Data (JSON): " << reply.result.accountData.dump(2) << "\n";
+  }
+  catch (const std::exception &ex)
+  {
+    std::cerr << "RPC call failed or returned error: " << ex.what() << "\n";
+  }
 
   return 0;
 }

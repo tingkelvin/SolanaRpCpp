@@ -66,7 +66,9 @@
     "__tree": "cpp",
     "regex": "cpp",
     "stack": "cpp",
-    "iomanip": "cpp"
+    "iomanip": "cpp",
+    "queue": "cpp",
+    "span": "cpp"
   },
   "C_Cpp.errorSquiggles": "disabled"
 }
