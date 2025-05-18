@@ -1,89 +1,50 @@
-#include <boost/asio.hpp>
-#include <boost/asio/ssl.hpp>
-#include <boost/asio/spawn.hpp>
-#include <boost/json.hpp>
-#include "Solana/Network/WebSocket.hpp"
-#include <thread>
-#include <chrono>
 #include <iostream>
-#include <fstream>
+// #include <nlohmann/json.hpp>
+// #include <boost/asio.hpp>
+// #include <boost/asio/ssl.hpp>
+#include <future>
 
-namespace net = boost::asio;
-namespace ssl = boost::asio::ssl;
-namespace beast = boost::beast;
-namespace json = boost::json;
-
+// Assume these are defined in your project
+#include "Solana/Rpc/Rpc.hpp"
+#include "Solana/Rpc/Methods/GetAccountInfo.hpp"
 int main()
 {
-  // Initialize Boost.Asio IO context and SSL context
-  net::io_context ioc;
-  ssl::context ctx{ssl::context::tlsv12_client};
+  Solana::Rpc rpc("https://api.devnet.solana.com");
 
-  // Load default certificates
-  ctx.set_default_verify_paths();
-  ctx.set_verify_mode(ssl::verify_peer);
+  // Raw JSON parsing
+  Solana::GetAccountInfo<> request("vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg");
+  auto future = rpc.send(request);
 
-  // Create WebSocket object using the factory method
-  auto ws = Solana::Network::WebSocket::create(
-      ioc, ctx)
+  // try
+  // {
+  //   auto reply = future.get(); // reply is Solana::RpcReply<Solana::GetAccountInfo<>>
 
-      // Define the subscription message
-      const std::vector<std::string>
-          subscription_messages = {R"({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "accountSubscribe",
-        "params": [
-            "2Rf9qzW9rhCnJmEbErrHDDZfeEXtemYdLkyJ1TE12pa7",
-            {
-                "encoding": "jsonParsed",
-                "commitment": "confirmed"
-            }
-        ]
-    })",
-                                   R"({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "accountSubscribe",
-        "params": [
-            "2Rf9qzW9rhCnJmEbErrHDDZfeEXtemYdLkyJ1TE12pa7",
-            {
-                "encoding": "jsonParsed",
-                "commitment": "confirmed"
-            }
-        ]
-    })"};
-
-  // Open file for logging messages
-  std::ofstream file("messages.json", std::ios::app); // Open in append mode
-
-  // Define the callback function for handling received messages
-  auto message_handler = [&file](beast::flat_buffer &&buf)
-  {
-    std::string message = beast::buffers_to_string(buf.data());
-    try
-    {
-      auto parsed = json::parse(message);
-      std::cout << "Parsed JSON:\n";
-      std::cout << parsed << std::endl;
-      file << message << "\n";
-      file.flush();
-      std::cout << "----------------------------------------\n";
-    }
-    catch (const std::exception &e)
-    {
-      std::cerr << "Failed to parse/write message: " << e.what() << "\n";
-    }
-  };
-
-  // Start the WebSocket connection with the subscription message
-  ws->start(subscription_messages, message_handler);
-
-  // The ioc.run() call is inside start() so we don't need to call it here
-
-  // To keep the program running (if needed)
-  std::cout << "Press Enter to exit..." << std::endl;
-  std::cin.get();
+  //   if (reply.result.has_value())
+  //   {
+  //     std::cout << "Status: Success\n";
+  //     const auto &accountInfoReply = reply.result.value();
+  //     std::cout << "Owner: " << accountInfoReply.owner.toBase58() << "\n";
+  //     std::cout << "Space: " << accountInfoReply.space << "\n";
+  //     std::cout << "Account Data: " << accountInfoReply.accountData.dump(2) << "\n";
+  //   }
+  //   else if (reply.error.has_value())
+  //   {
+  //     std::cout << "Status: Error\n";
+  //     std::cerr << "RPC Error Code: " << reply.error.value().code << "\n";
+  //     std::cerr << "RPC Error Message: " << reply.error.value().message << "\n";
+  //     // You can also access reply.error.value().data if it exists
+  //   }
+  //   else
+  //   {
+  //     std::cout << "Status: Unknown\n";
+  //     std::cerr << "No result or error in the reply.\n";
+  //   }
+  // }
+  // catch (const std::exception &ex)
+  // {
+  //   std::cout << "Status: Exception\n";
+  //   std::cerr << "Exception: " << ex.what() << "\n";
+  // }
 
   return 0;
 }

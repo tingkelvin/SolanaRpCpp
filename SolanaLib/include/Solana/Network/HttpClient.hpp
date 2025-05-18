@@ -11,6 +11,7 @@
 #include <future>
 #include <boost/url.hpp>
 #include <iostream>
+#include "Solana/Logger.hpp"
 
 using namespace boost::urls;
 using json = nlohmann::json;
@@ -35,7 +36,7 @@ namespace Solana::Network
                 targetBase = "/";
             }
             std::cout << "endpoint:" << endpoint << std::endl;
-            std::cout << "eservice:" << service << std::endl;
+            std::cout << "service:" << service << std::endl;
         }
         std::string endpoint;
         std::string service;
@@ -88,6 +89,7 @@ namespace Solana::Network
         template <typename T>
         std::future<T> post(const json &body)
         {
+
             http::request<http::string_body> req;
             req.method(http::verb::post);
             req.target(url.targetBase);
@@ -97,6 +99,7 @@ namespace Solana::Network
             req.set(http::field::accept, "application/json");
             req.body() = body.dump();
             req.prepare_payload();
+            std::cout << "POST: " << req.body() << std::endl;
 
             return sendRequest<T>(std::move(req));
         }
@@ -153,6 +156,7 @@ namespace Solana::Network
 
         std::future<T> start()
         {
+            LOG_INFO("Hello from MyClass!");
             auto future = promise_->get_future();
 
             // Set SNI hostname

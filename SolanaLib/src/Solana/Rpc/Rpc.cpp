@@ -1,42 +1,42 @@
-// #include "Solana/Rpc/Rpc.hpp"
-// #include <chrono>
+#include "Solana/Rpc/Rpc.hpp"
+#include <chrono>
 
-// using namespace Solana;
+using namespace Solana;
 
-// namespace
-// {
-//     net::io_context ioc = {};
-//     std::atomic_int messageCounter = 0;
-// }
+namespace
+{
+    net::io_context ioc = {};
+    std::atomic_int messageCounter = 0;
+}
 
-// Rpc Rpc::DefaultMainnet()
-// {
-//     return Rpc("https://api.mainnet-beta.solana.com");
-// }
+Rpc Rpc::DefaultMainnet()
+{
+    return Rpc("https://api.mainnet-beta.solana.com");
+}
 
-// Rpc::~Rpc()
-// {
-//     ws->shutdown();
-//     wsThread.join();
-// }
+Rpc::~Rpc()
+{
+    // ws->shutdown();
+    wsThread.join();
+}
 
-// void Rpc::runWs()
-// {
-//     net::io_context ioc;
-//     ssl::context ctx{ssl::context::tlsv12_client};
+void Rpc::runWs()
+{
+    // net::io_context ioc;
+    // ssl::context ctx{ssl::context::tlsv12_client};
 
-//     ws = std::make_shared<Network::WebSocket>(ioc, ctx, "mainnet.helius-rpc.com", "443", "7b0e15f4-3d3b-4e17-be8d-3ada2a0e9e3d");
-//     auto url = client.getUrl();
-//     url.service = "443";
-//     ws->run(url);
+    // ws = std::make_shared<Network::WebSocket>(ioc, ctx, "mainnet.helius-rpc.com", "443", "7b0e15f4-3d3b-4e17-be8d-3ada2a0e9e3d");
+    // auto url = client.getUrl();
+    // url.service = "443";
+    // ws->run(url);
 
-//     if (ioc.stopped())
-//         ioc.restart();
-//     ready = true;
-//     cv.notify_all();
+    // if (ioc.stopped())
+    //     ioc.restart();
+    // ready = true;
+    // cv.notify_all();
 
-//     ioc.run();
-// }
+    // ioc.run();
+}
 
 // std::future<bool> Rpc::removeSubscription(int subId)
 // {
