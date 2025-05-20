@@ -3,45 +3,46 @@
 #include "RpcMethod.hpp"
 #include "Common.hpp"
 
-namespace Solana {
-    struct RequestAirdrop : public RpcMethod {
+namespace Solana
+{
+    struct RequestAirdrop : public RpcMethod<RequestAirdrop>
+    {
 
         // Reply structure
 
         using Reply = std::string;
 
-        static Reply parseReply(const json & j) {
+        static Reply parseReply(const json &j)
+        {
             return j["result"].get<std::string>();
         }
 
         // Config params
 
-        struct Config {
+        struct Config
+        {
             Commitment commitment;
         };
-
 
         // Command impl
 
         explicit RequestAirdrop(
-            const std::string & address,
+            const std::string &address,
             u64 amount,
-            const Config & config = {})
-            : address(address)
-            , amount(amount)
-            , config(config)
-        {}
+            const Config &config = {})
+            : address(address), amount(amount), config(config)
+        {
+        }
 
-        std::string methodName() const override { return "requestAirdrop"; }
+        std::string methodName() const { return "requestAirdrop"; }
 
-        json toJson() const override {
+        json toJson() const
+        {
             auto c = json::object();
             config.commitment.addToJson(c);
-            return json::array({
-                address,
-                amount,
-                c
-            });
+            return json::array({address,
+                                amount,
+                                c});
         }
 
         std::string address;

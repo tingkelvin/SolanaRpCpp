@@ -1,10 +1,13 @@
 #pragma once
 #include "RpcMethod.hpp"
 
-namespace Solana {
-    struct GetEpochInfo : public RpcMethod {
+namespace Solana
+{
+    struct GetEpochInfo : public RpcMethod<GetEpochInfo>
+    {
         REPLY
-        struct Reply {
+        struct Reply
+        {
             u64 absoluteSlot;
             u64 blockHeight;
             u64 epoch;
@@ -13,34 +16,36 @@ namespace Solana {
             std::optional<u64> transactionCount;
         };
 
-        static Reply parseReply(const json & data) {
+        static Reply parseReply(const json &data)
+        {
             const auto res = data["result"];
-            return Reply {
+            return Reply{
                 .absoluteSlot = res["absoluteSlot"].get<u64>(),
                 .blockHeight = res["blockHeight"].get<u64>(),
                 .epoch = res["epoch"].get<u64>(),
                 .slotIndex = res["slotIndex"].get<u64>(),
                 .slotsInEpoch = res["slotsInEpoch"].get<u64>(),
                 .transactionCount = res["transactionCount"].is_null()
-                        ? std::nullopt
-                        : std::optional<u64>(res["transactionCount"].get<u64>())
-            };
+                                        ? std::nullopt
+                                        : std::optional<u64>(res["transactionCount"].get<u64>())};
         }
 
         CONFIG
 
-        struct Config {
+        struct Config
+        {
             Commitment commitment;
             MinContextSlot minContextSlot;
         };
 
         COMMAND
 
-        explicit GetEpochInfo(const Config & config = {}): config(config){}
+        explicit GetEpochInfo(const Config &config = {}) : config(config) {}
 
-        std::string methodName() const override { return "getEpochInfo"; }
+        std::string methodName() const { return "getEpochInfo"; }
 
-        json toJson() const override {
+        json toJson() const
+        {
             auto c = json::object();
             config.commitment.addToJson(c);
             config.minContextSlot.addToJson(c);

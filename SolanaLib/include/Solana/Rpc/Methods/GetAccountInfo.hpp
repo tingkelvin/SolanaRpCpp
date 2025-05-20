@@ -26,7 +26,7 @@ namespace Solana
 {
     // TODO: support base64+ztd encoded accounts
     template <typename AccountStruct = json>
-    struct GetAccountInfo : RpcMethod
+    struct GetAccountInfo : RpcMethod<GetAccountInfo<>>
     {
         struct Reply
         {
@@ -117,15 +117,20 @@ namespace Solana
         explicit GetAccountInfo(const std::string &address, const Config &config = {})
             : key(address), config(config) {}
 
-        std::string methodName() const override { return "getAccountInfo"; }
+        std::string methodNameImpl() const { return "getAccountInfo"; }
 
-        json toJson() const override
+        json toJsonImpl() const
         {
             auto ob = json::object();
             config.encoding.addToJson(ob);
             config.commitment.addToJson(ob);
             auto c = json::array({key, ob});
             return c;
+        }
+
+        bool hasParamsImpl() const
+        {
+            return true;
         }
 
         std::string key;

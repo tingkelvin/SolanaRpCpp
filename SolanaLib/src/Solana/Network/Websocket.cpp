@@ -163,34 +163,15 @@ namespace Solana::Network
         if (!ws->is_open())
             return;
 
-        // Use boost::json namespace for parsing
-        using json = boost::json::value;
-
-        json message;
-        try
+        // Move the buffer to the callback
+        if (onMessage_)
         {
-            auto data = static_cast<const char *>(buffer.data().data());
-            size_t size = buffer.size();
-
-            message = boost::json::parse(std::string(data, size));
-        }
-        catch (const std::exception &e)
-        {
-            std::cout << "Failed to parse message: " << e.what() << "\n";
+            onMessage_(std::move(buffer));
         }
 
-        if (message.is_object())
-        {
-            std::cout << "Received: " << message << "\n";
+        // Reset buffer (allocate new one since moved-from buffer is in unspecified state)
+        buffer = beast::flat_buffer();
 
-            // Handle message based on its content
-            // Add your message handling logic here
-        }
-
-        // Clear the buffer for the next message
-        buffer.consume(buffer.size());
-
-        // If we're not cancelled, continue reading
         if (!cancelled)
         {
             doRead();
@@ -238,6 +219,7 @@ namespace Solana::Network
 
                 // Run the I/O service. The call will return when
                 // the socket is closed.
+                onMessage_ = std::move(on_msg_callback); // Store callback
                 ioc.run();
                 break; // Exit loop on success
             }

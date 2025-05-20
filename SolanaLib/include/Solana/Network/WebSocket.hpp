@@ -74,6 +74,7 @@ namespace Solana::Network
         beast::flat_buffer buffer;
         net::steady_timer timer_;
         bool cancelled;
+        std::function<void(beast::flat_buffer &&)> onMessage_;
     };
 }
 

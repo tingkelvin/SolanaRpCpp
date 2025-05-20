@@ -3,18 +3,22 @@
 #include "RpcMethod.hpp"
 #include "Solana/Core/Transaction/Transaction.hpp"
 
-namespace Solana {
-    struct SendTransaction : public RpcMethod {
+namespace Solana
+{
+    struct SendTransaction : public RpcMethod<SendTransaction>
+    {
 
         // Reply structure
         using Reply = json;
 
-        static Reply parseReply(const json & j) {
+        static Reply parseReply(const json &j)
+        {
             return j["result"];
         }
 
         // Config params
-        struct Config {
+        struct Config
+        {
             SimpleEncoding encoding;
             RPCPARAM(bool, skipPreflight);
             RPCPARAM(u32, maxRetries);
@@ -24,22 +28,21 @@ namespace Solana {
         // Command impl
 
         explicit SendTransaction(
-            const Txn & txn, const Config & config = {})
-            : txn(txn.serialize().toString())
-            , config(config)
-        {}
+            const Txn &txn, const Config &config = {})
+            : txn(txn.serialize().toString()), config(config)
+        {
+        }
 
-        explicit SendTransaction(const std::string & txn, const Config & config = {})
-            : txn(txn)
-            , config(config)
-        {}
+        explicit SendTransaction(const std::string &txn, const Config &config = {})
+            : txn(txn), config(config)
+        {
+        }
 
-        std::string methodName() const override { return "sendTransaction"; }
+        std::string methodName() const { return "sendTransaction"; }
 
-        json toJson() const override {
-            return json::array({
-               txn
-           });
+        json toJson() const
+        {
+            return json::array({txn});
         }
 
         std::string txn;

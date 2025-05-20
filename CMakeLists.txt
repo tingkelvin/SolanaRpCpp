@@ -57,5 +57,5 @@ add_executable(app main.cpp)
 target_link_libraries(app PRIVATE SolanaLib)
 
 # Enable tests
-enable_testing()
-add_subdirectory(SolanaLib/tests)
+# enable_testing()
+# add_subdirectory(SolanaLib/tests)

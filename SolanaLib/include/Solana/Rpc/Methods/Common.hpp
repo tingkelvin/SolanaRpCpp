@@ -5,7 +5,6 @@
 
 namespace Solana
 {
-
     template <size_t N>
     struct StringLiteral
     {
@@ -154,4 +153,55 @@ namespace Solana
 
         AccountEncoding() = default;
     };
+
+    enum class KnownProgram
+    {
+        Unknown,
+        JupiterV6,
+        // Add others here
+    };
+
+    inline KnownProgram identify_program(const std::string &program_id)
+    {
+        if (program_id == "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4")
+            return KnownProgram::JupiterV6;
+        return KnownProgram::Unknown;
+    }
+
+    inline const char *program_name(KnownProgram prog)
+    {
+        switch (prog)
+        {
+        case KnownProgram::JupiterV6:
+            return "JUPITER_V6";
+        default:
+            return "UNKNOWN";
+        }
+    }
+
+    enum class KnownAccount
+    {
+        Unknown,
+        JupiterAggregatorEventAuthority,
+        // Add more known accounts here
+    };
+
+    inline KnownAccount identify_account(const std::string &account_id)
+    {
+        if (account_id == "D8cy77BBepLMngZx6ZukaTff5hCt1HrWyKk3Hnd9oitf")
+            return KnownAccount::JupiterAggregatorEventAuthority;
+        return KnownAccount::Unknown;
+    }
+
+    inline const char *account_name(KnownAccount account)
+    {
+        switch (account)
+        {
+        case KnownAccount::JupiterAggregatorEventAuthority:
+            return "JUPITER_AGGREGATOR_EVENT_AUTHORITY";
+        default:
+            return "UNKNOWN";
+        }
+    }
+
 }

@@ -1,29 +1,34 @@
 #pragma once
 #include "RpcMethod.hpp"
 
-namespace Solana {
-    struct GetSlot : public RpcMethod {
+namespace Solana
+{
+    struct GetSlot : public RpcMethod<GetSlot>
+    {
         REPLY
         using Reply = u64;
 
-        static Reply parseReply(const json & data) {
+        static Reply parseReply(const json &data)
+        {
             return data["result"].get<u64>();
         }
 
         CONFIG
 
-        struct Config {
+        struct Config
+        {
             Commitment commitment;
             MinContextSlot minContextSlot;
         };
 
         COMMAND
 
-        explicit GetSlot(const Config & config = {}): config(config){}
+        explicit GetSlot(const Config &config = {}) : config(config) {}
 
-        std::string methodName() const override { return "getSlot"; }
+        std::string methodName() const { return "getSlot"; }
 
-        json toJson() const override {
+        json toJson() const
+        {
             auto c = json::object();
 
             config.commitment.addToJson(c);

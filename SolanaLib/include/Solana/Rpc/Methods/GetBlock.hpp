@@ -2,46 +2,49 @@
 #include "RpcMethod.hpp"
 #include "Common.hpp"
 
-namespace Solana {
-    struct GetBlock : RpcMethod {
+namespace Solana
+{
+    struct GetBlock : RpcMethod<GetBlock>
+    {
 
         // Reply structure
 
-        struct Reply {
+        struct Reply
+        {
             json blockData;
         };
 
-        static Reply parseReply(const json & data) {
-            return Reply {
-                .blockData = data["result"]
-            };
+        static Reply parseReply(const json &data)
+        {
+            return Reply{
+                .blockData = data["result"]};
         }
 
         // Config params
 
-        struct Config {
+        struct Config
+        {
             Commitment commitment;
             AccountEncoding encoding;
         };
 
         // Command impl
 
-        explicit GetBlock(int64_t slot, const Config & config = {}) :
-            slot(slot),
-            config(config)
-        {}
+        explicit GetBlock(int64_t slot, const Config &config = {}) : slot(slot),
+                                                                     config(config)
+        {
+        }
 
-        json toJson() const override {
+        json toJson() const
+        {
             auto ob = json::object();
             config.commitment.addToJson(ob);
             config.encoding.addToJson(ob);
-            return json::array({
-                slot,
-                ob
-            });
+            return json::array({slot,
+                                ob});
         }
 
-        std::string methodName() const override { return "getBlock"; }
+        std::string methodName() const { return "getBlock"; }
 
         int64_t slot;
         Config config;
